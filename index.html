@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset=utf-8 />
+  <title>Lab 09 Starter</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <link href='http://fonts.googleapis.com/css?family=Lato' rel='stylesheet' type='text/css'>
+
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: rgb(221, 168, 168);
+      font-family: Lato, sans-serif;
+      color: #0D0000;
+    }
+
+    header {
+      width: 80%;
+      margin: 10px auto 10px auto;
+      text-align: center;
+    }
+
+    h1 {
+      display: inline-block;
+      margin-right: 20px;
+      color: #001323;
+      text-decoration: underline;
+    }
+
+    h2 {
+      display: inline-block;
+      color: #001323;
+      text-align: center;
+    }
+
+    #map {
+      width: 80%;
+      height: 540px;
+      margin: 10px 10%;
+      background: rgb(105, 125, 167);
+      border: 4px solid #050708;
+      border-radius: 10px;
+    }
+
+    footer {
+      padding: 6px 10%;
+      width: 80%;
+    }
+
+    p {
+      font-size: 1em;
+      color: #001323;
+    }
+
+    a {
+      color: #bb874c;
+    }
+
+    a:hover {
+      color: rgb(67, 69, 71);
+      text-decoration: none;
+    }
+
+    .legend {
+      padding: 6px 8px;
+      font-size: 1em;
+      border: 2px solid rgb(1, 2, 1);
+      background: rgba(100, 100, 100, 0.9);
+      color: rgba(244, 244, 244, 0.8);
+      border-radius: 5px;
+    }
+
+    .legend h3 {
+      font-size: 1.4em;
+      font-weight: normal;
+      color: rgb(241, 215, 215);
+      margin: 0 0 10px 0;
+      text-align: center;
+    }
+
+    .legend span {
+      width: 15px;
+      height: 10px;
+      float: left;
+      margin: 0 10px 4px 0;
+    }
+
+    .legend label {
+      font-size: 1.1em;
+      color: rgba(211, 145, 145, 0.9);
+    }
+
+    .legend label:after {
+      content: '';
+      display: block;
+    }
+
+    .leaflet-bar a {
+      /* Override the default style for Leaflet's zoom  */
+      background: rgba(221, 176, 176, 0.9);
+      color: rgba(0, 0, 0, 0.8);
+    }
+  </style>
+</head>
+
+<body>
+  <header>
+    <h1>Map Title</h1>
+    <h2>Map Subtitle</h2>
+  </header>
+
+  <div id='map'></div>
+
+  <footer>
+    <p>Map authored by Nathaniel Deaton.</p>
+    <p>The average cost for renting living spaces across the US has seen a steady increase.</p>
+    <p>Although many counties in the US experienced this increase, a fair amount of others have remained stagnant or
+      have even dropped in value depending on the type of property leasees are interested in. For example, according to
+      this <strong> <a href="https://www.apartmentguide.com/blog/apartment-guide-annual-rent-report/"> blog report from
+        ApartmentGuide</a></strong> , homes with less than one bedroom have dropped 2.7 percent in average price while 1, 2, and
+      3 bedroom apartments have increased up over 4 percent more the past year.
+    </p>
+    <p> Fortunately, we can get a glimpse at this reality with the map above. Click on various counties throughout the US or drag the map to Alaska and/or Hawaii to see the average rent prices for counties across the United States.</p>
+  </footer>
+
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"
+    integrity="sha256-/xUj+3OJU5yExlq6GSYGSHk7tPXikynS7ogEvDej/m4=" crossorigin="anonymous"></script>
+  <!--SRI for security-->
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <script src='https://unpkg.com/simple-statistics@7.6.0/dist/simple-statistics.min.js'>
+  </script>
+
+  <script>
+    // Insert title with jQuery
+    jQuery("h1").html("Average Rent Per County in the United States");
+    jQuery("h2").html("What are the most expensive counties to rent in the country?")
+
+    var options = {
+      center: [39.5, -98.35],
+      zoom: 3.5,
+      zoomSnap: 1,
+      zoomControl: false
+    }
+
+    var map = L.map('map', options); // map variable storing object & options
+
+    map.addControl(L.control.zoom({ // zoom control object 
+      position: 'topright'
+    }));
+
+    rentData = 'data/counties_median_rent_2015.json' // Path to county rent data 
+
+    var rentValue = "RENT";
+    var county = "NAME"
+    var values = [];
+    // Create Leaflet map object 
+    $.getJSON(rentData, function (data) {
+      var dataLayer = L.geoJson(data, {
+        style: function (feature) {
+          return {
+            color: '#444',
+            weight: 1,
+            fillOpacity: 1,
+          };
+        },
+        // Popup content 
+        onEachFeature: function (feature, layer) {
+          layer.on('mouseover', function () {
+            var props = feature.properties
+            var content = `<strong>${props[county]} County <br>
+                            Average Rent: $${props[rentValue]}`
+            layer.bindPopup(content)
+          })
+        }
+      }).addTo(map);
+      drawMap(dataLayer);
+    })
+
+    // Draw layer based on class breaks
+    function drawMap(dataLayer) {
+
+      var breaks = getClassBreaks(dataLayer);
+
+      dataLayer.eachLayer(function (layer) {
+
+        let props = layer.feature.properties;
+
+        layer.setStyle({
+          fillColor: getColor(props[rentValue], breaks)
+        })
+      });
+
+      let legend = drawLegend(breaks)
+
+    };
+
+    // Create class breaks based on rent value 
+    function getClassBreaks(dataLayer) {
+
+      dataLayer.eachLayer(function (layer) {
+        var props = layer.feature.properties;
+
+        var value = props[rentValue];
+
+        // function to remove null or 0 values
+        function cleanData(layer) {
+          for (var rent in value) {
+            if (rent === null || rent === 0) {
+              delete value;
+            }
+          }
+          return value
+        }
+
+        console.log(value)
+        values.push(value);
+
+      });
+
+      var clusters = ss.ckmeans(values, 7);
+
+      let breaks = clusters.map(function (cluster) {
+        return [cluster[0], cluster.pop()];
+      });
+
+      return breaks;
+    }
+
+    // Return the color based on the class break function
+    function getColor(d, breaks) {
+
+      if (d <= breaks[0][1]) {
+        return '#fee5d9'
+      } else if (d <= breaks[1][1]) {
+        return '#fcbba1'
+      } else if (d <= breaks[2][1]) {
+        return '#fc9272'
+      } else if (d <= breaks[3][1]) {
+        return '#fb6a4a'
+      } else if (d <= breaks[4][1]) {
+        return '#ef3b2c'
+      } else if (d <= breaks[5][1]) {
+        return '#cb181d'
+      } else if (d <= breaks[6][1]) {
+        return '#99000d'
+      }
+    }
+
+    function drawLegend(breaks) {
+      console.log(breaks)
+
+      var legend = L.control({
+        position: 'bottomright' // place legend element at top left of map
+      });
+
+      legend.onAdd = function () {
+
+        var div = L.DomUtil.create('div', 'legend');
+
+        div.innerHTML = `<h3>Average Rent in the United<br> States by County</h3>`;
+
+        for (var i = 0; i < breaks.length; i++) {
+
+          var color = getColor(breaks[i][0], breaks);
+
+          div.innerHTML +=
+            `<span style="background:${color}"></span> 
+                  <label>${(breaks[i][0])} &mdash;
+                  ${(breaks[i][1])}</label>`;
+        }
+
+        return div;
+      };
+
+      legend.addTo(map)
+    };
+
+    // AJAX - Load state boundaries layer 
+    // Cannot get the layer to draw above the counties layer
+    $.when(rentData).done(function () {
+
+      $.getJSON("data/us_states_20m.geojson", function (data) {
+
+        var stateLayer = L.geoJson(data, {
+
+          style: function (feature) {
+            return {
+              color: '#222',
+              weight: 2,
+              fillOpacity: 0,
+              interactive: false
+            };
+          },
+        })
+        stateLayer.addTo(map)
+      });
+    });
+  </script>
+
+</body>
+
+</html>
