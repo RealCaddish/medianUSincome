@@ -152,7 +152,7 @@
       position: 'topright'
     }));
 
-    rentData = 'data/counties_median_rent_2015.json' // Path to county rent data 
+    rentData = 'counties_median_rent_2015.json' // Path to county rent data 
 
     var rentValue = "RENT";
     var county = "NAME"
@@ -283,7 +283,7 @@
     // Cannot get the layer to draw above the counties layer
     $.when(rentData).done(function () {
 
-      $.getJSON("data/us_states_20m.geojson", function (data) {
+      $.getJSON("us_states_20m.geojson", function (data) {
 
         var stateLayer = L.geoJson(data, {
 
